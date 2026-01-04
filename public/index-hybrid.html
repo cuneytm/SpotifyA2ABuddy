@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Müzik Dostum - Türkçe Sesli Asistan</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #1DB954, #1ed760);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      color: #888;
+      font-size: 1.1em;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 25px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Status */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff4444;
+      transition: all 0.3s;
+    }
+    
+    .status-indicator.connected {
+      background: #1DB954;
+      box-shadow: 0 0 10px #1DB954;
+    }
+    
+    .status-indicator.listening {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    
+    .status-text {
+      flex: 1;
+      font-size: 0.95em;
+    }
+    
+    /* Microphone Button */
+    .mic-section {
+      text-align: center;
+      padding: 30px;
+    }
+    
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #1DB954, #169c46);
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(29, 185, 84, 0.3);
+    }
+    
+    .mic-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(29, 185, 84, 0.4);
+    }
+    
+    .mic-button.listening {
+      background: linear-gradient(145deg, #ff6b6b, #ee5253);
+      animation: pulse 1s infinite;
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+    }
+    
+    .mic-button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    
+    .mic-label {
+      margin-top: 15px;
+      font-size: 1.1em;
+      color: #888;
+    }
+    
+    /* Conversation */
+    .conversation {
+      height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 15px;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+      padding: 12px 16px;
+      border-radius: 15px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .message.assistant {
+      background: linear-gradient(135deg, #1DB954, #169c46);
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+    }
+    
+    .message.interim {
+      opacity: 0.6;
+      font-style: italic;
+    }
+    
+    .message-role {
+      font-size: 0.75em;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+    
+    /* Now Playing */
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+      background: rgba(29, 185, 84, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(29, 185, 84, 0.2);
+    }
+    
+    .album-art {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+    }
+    
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+    
+    .track-info h3 {
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+    
+    .track-info p {
+      color: #888;
+      font-size: 0.95em;
+    }
+    
+    /* Commands */
+    .commands {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .command-chip {
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      text-align: center;
+      font-size: 0.9em;
+      color: #aaa;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎵 Müzik Dostum</h1>
+    <p>Deepgram + GPT-4 Türkçe Sesli Asistan</p>
+  </div>
+  
+  <div class="container">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <span class="status-text" id="statusText">Bağlanıyor...</span>
+    </div>
+    
+    <!-- Microphone Section -->
+    <div class="card mic-section">
+      <button class="mic-button" id="micButton" disabled>🎤</button>
+      <p class="mic-label" id="micLabel">Bağlantı bekleniyor...</p>
+    </div>
+    
+    <!-- Now Playing -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">🎧 Şu An Çalıyor</h2>
+      <div class="now-playing" id="nowPlaying">
+        <div class="album-art" id="albumArt">🎵</div>
+        <div class="track-info">
+          <h3 id="trackName">-</h3>
+          <p id="trackArtist">-</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Conversation -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">💬 Konuşma</h2>
+      <div class="conversation" id="conversation">
+        <div class="message assistant">
+          <div class="message-role">🤖 Müzik Dostum</div>
+          Merhaba! Ben Müzik Dostum. Bana Türkçe komutlar verebilirsin.
+        </div>
+      </div>
+      
+      <div class="commands">
+        <div class="command-chip">"Tarkan çal"</div>
+        <div class="command-chip">"Durdur"</div>
+        <div class="command-chip">"Devam et"</div>
+        <div class="command-chip">"Sonraki şarkı"</div>
+        <div class="command-chip">"Ne çalıyor?"</div>
+        <div class="command-chip">"Sesi kıs"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spotify Web Playback SDK -->
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  
+  <script>
+    // Elements
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const micButton = document.getElementById('micButton');
+    const micLabel = document.getElementById('micLabel');
+    const conversation = document.getElementById('conversation');
+    const trackName = document.getElementById('trackName');
+    const trackArtist = document.getElementById('trackArtist');
+    const albumArt = document.getElementById('albumArt');
+    
+    // State
+    let ws = null;
+    let audioContext = null;
+    let mediaStream = null;
+    let audioProcessor = null;
+    let isListening = false;
+    let spotifyPlayer = null;
+    let currentInterimMessage = null;
+    
+    // ================== WEBSOCKET ==================
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://${window.location.host}/ws`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket bağlandı');
+      };
+      
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'connected':
+            statusIndicator.classList.add('connected');
+            statusText.textContent = 'Bağlandı - Konuşmaya başlayabilirsiniz';
+            micButton.disabled = false;
+            micLabel.textContent = 'Konuşmak için tıklayın';
+            break;
+          
+          case 'transcript':
+            handleTranscript(data);
+            break;
+          
+          case 'audio_mp3':
+            playMP3Audio(data.data);
+            break;
+          
+          case 'speech_started':
+            statusIndicator.classList.add('listening');
+            break;
+        }
+      };
+      
+      ws.onclose = () => {
+        statusIndicator.classList.remove('connected');
+        statusText.textContent = 'Bağlantı kesildi, yeniden bağlanılıyor...';
+        micButton.disabled = true;
+        setTimeout(connectWebSocket, 2000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket hatası:', error);
+      };
+    }
+    
+    // ================== TRANSCRIPT HANDLING ==================
+    function handleTranscript(data) {
+      const { role, text, isFinal } = data;
+      
+      if (role === 'user') {
+        if (isFinal) {
+          // Final mesaj - kalıcı olarak ekle
+          if (currentInterimMessage) {
+            currentInterimMessage.remove();
+            currentInterimMessage = null;
+          }
+          addMessage('user', text);
+        } else {
+          // Interim mesaj - geçici olarak göster
+          if (!currentInterimMessage) {
+            currentInterimMessage = document.createElement('div');
+            currentInterimMessage.className = 'message user interim';
+            conversation.appendChild(currentInterimMessage);
+          }
+          currentInterimMessage.innerHTML = `<div class="message-role">👤 Sen</div>${text}`;
+          conversation.scrollTop = conversation.scrollHeight;
+        }
+      } else if (role === 'assistant') {
+        addMessage('assistant', text);
+      }
+    }
+    
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `
+        <div class="message-role">${role === 'user' ? '👤 Sen' : '🤖 Müzik Dostum'}</div>
+        ${text}
+      `;
+      conversation.appendChild(div);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+    
+    // ================== AUDIO PLAYBACK ==================
+    function playMP3Audio(base64Data) {
+      const audio = new Audio('data:audio/mp3;base64,' + base64Data);
+      audio.play().catch(e => console.error('Audio oynatma hatası:', e));
+    }
+    
+    // ================== MICROPHONE ==================
+    async function startListening() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 16000
+        });
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        });
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        
+        audioProcessor.onaudioprocess = (e) => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcmData = new Int16Array(inputData.length);
+            
+            for (let i = 0; i < inputData.length; i++) {
+              pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+            }
+            
+            ws.send(pcmData.buffer);
+          }
+        };
+        
+        source.connect(audioProcessor);
+        audioProcessor.connect(audioContext.destination);
+        
+        isListening = true;
+        micButton.classList.add('listening');
+        micLabel.textContent = 'Dinleniyor... Durdurmak için tıklayın';
+        statusText.textContent = '🎤 Dinleniyor...';
+        
+      } catch (error) {
+        console.error('Mikrofon hatası:', error);
+        alert('Mikrofon erişimi gerekli!');
+      }
+    }
+    
+    function stopListening() {
+      if (audioProcessor) {
+        audioProcessor.disconnect();
+        audioProcessor = null;
+      }
+      
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      
+      isListening = false;
+      micButton.classList.remove('listening');
+      micLabel.textContent = 'Konuşmak için tıklayın';
+      statusText.textContent = 'Bağlandı - Konuşmaya başlayabilirsiniz';
+      statusIndicator.classList.remove('listening');
+    }
+    
+    micButton.addEventListener('click', () => {
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+    
+    // ================== SPOTIFY WEB PLAYBACK SDK ==================
+    async function fetchSpotifyToken() {
+      const response = await fetch('/api/spotify-token');
+      const data = await response.json();
+      return data.token;
+    }
+    
+    window.onSpotifyWebPlaybackSDKReady = async () => {
+      console.log('Spotify SDK hazır');
+      
+      const token = await fetchSpotifyToken();
+      
+      spotifyPlayer = new Spotify.Player({
+        name: 'Müzik Dostum Web Player',
+        getOAuthToken: async (cb) => {
+          const token = await fetchSpotifyToken();
+          cb(token);
+        },
+        volume: 0.5
+      });
+      
+      spotifyPlayer.addListener('ready', async ({ device_id }) => {
+        console.log('Spotify Player hazır, Device ID:', device_id);
+        
+        // Device ID'yi sunucuya kaydet
+        await fetch('/api/set-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: device_id })
+        });
+      });
+      
+      spotifyPlayer.addListener('player_state_changed', (state) => {
+        if (state?.track_window?.current_track) {
+          const track = state.track_window.current_track;
+          trackName.textContent = track.name;
+          trackArtist.textContent = track.artists.map(a => a.name).join(', ');
+          
+          if (track.album?.images?.[0]?.url) {
+            albumArt.innerHTML = `<img src="${track.album.images[0].url}" alt="Album">`;
+          }
+        }
+      });
+      
+      spotifyPlayer.addListener('initialization_error', ({ message }) => {
+        console.error('Spotify başlatma hatası:', message);
+      });
+      
+      spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('Spotify auth hatası:', message);
+      });
+      
+      spotifyPlayer.addListener('playback_error', ({ message }) => {
+        console.error('Spotify playback hatası:', message);
+      });
+      
+      await spotifyPlayer.connect();
+    };
+    
+    // ================== CURRENT TRACK POLLING ==================
+    async function updateCurrentTrack() {
+      try {
+        const token = await fetchSpotifyToken();
+        const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok && response.status !== 204) {
+          const data = await response.json();
+          if (data?.item) {
+            trackName.textContent = data.item.name;
+            trackArtist.textContent = data.item.artists.map(a => a.name).join(', ');
+            
+            if (data.item.album?.images?.[0]?.url) {
+              albumArt.innerHTML = `<img src="${data.item.album.images[0].url}" alt="Album">`;
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+    
+    setInterval(updateCurrentTrack, 3000);
+    
+    // ================== INIT ==================
+    connectWebSocket();
+  </script>
+</body>
+</html>

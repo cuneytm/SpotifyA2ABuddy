@@ -1,0 +1,8 @@
+node_modules/
+.env
+.spotify-tokens.json
+spotify-tokens.json
+.DS_Store
+server.log
+conversation.log
+*.log

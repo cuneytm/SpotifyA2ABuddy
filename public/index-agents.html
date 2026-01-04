@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Music Buddy - AI Voice Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #1DB954, #1ed760);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      color: #888;
+      font-size: 1.1em;
+    }
+    
+    .agents-status {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    
+    .agent-badge {
+      font-size: 0.75em;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(29, 185, 84, 0.2);
+      border: 1px solid rgba(29, 185, 84, 0.3);
+      color: #1DB954;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 25px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff4444;
+      transition: all 0.3s;
+    }
+    
+    .status-indicator.connected {
+      background: #1DB954;
+      box-shadow: 0 0 10px #1DB954;
+    }
+    
+    .status-indicator.listening {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    
+    .status-text {
+      flex: 1;
+      font-size: 0.95em;
+    }
+    
+    .mic-section {
+      text-align: center;
+      padding: 30px;
+    }
+    
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #1DB954, #169c46);
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(29, 185, 84, 0.3);
+    }
+    
+    .mic-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(29, 185, 84, 0.4);
+    }
+    
+    .mic-button.listening {
+      background: linear-gradient(145deg, #ff6b6b, #ee5253);
+      animation: pulse 1s infinite;
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+    }
+    
+    .mic-button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    
+    .mic-label {
+      margin-top: 15px;
+      font-size: 1.1em;
+      color: #888;
+    }
+    
+    .conversation {
+      height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 15px;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+      padding: 12px 16px;
+      border-radius: 15px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .message.assistant {
+      background: linear-gradient(135deg, #1DB954, #169c46);
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+    }
+    
+    .message-role {
+      font-size: 0.75em;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+    
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+      background: rgba(29, 185, 84, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(29, 185, 84, 0.2);
+    }
+    
+    .album-art {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      overflow: hidden;
+    }
+    
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .track-info h3 {
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+    
+    .track-info p {
+      color: #888;
+    }
+    
+    .commands {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .command-chip {
+      padding: 8px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      font-size: 0.85em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎵 Music Buddy</h1>
+    <p>Multi-Agent AI Voice Assistant</p>
+    <div class="agents-status">
+      <span class="agent-badge">🎯 Orchestrator</span>
+      <span class="agent-badge">🗣️ Speech</span>
+      <span class="agent-badge">💬 Conversation</span>
+      <span class="agent-badge">😊 Sentiment</span>
+      <span class="agent-badge">🎧 Spotify</span>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="status-bar">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <span class="status-text" id="statusText">Connecting...</span>
+    </div>
+    
+    <div class="card mic-section">
+      <button class="mic-button" id="micButton" disabled>🎤</button>
+      <p class="mic-label" id="micLabel">Waiting for connection...</p>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">🎧 Now Playing</h2>
+      <div class="now-playing" id="nowPlaying">
+        <div class="album-art" id="albumArt">🎵</div>
+        <div class="track-info">
+          <h3 id="trackName">-</h3>
+          <p id="trackArtist">-</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">💬 Conversation</h2>
+      <div class="conversation" id="conversation">
+        <div class="message assistant">
+          <div class="message-role">🤖 Music Buddy</div>
+          Hello! I'm Music Buddy. Just speak naturally and I'll control your music. Try saying "play some jazz" or "next song"!
+        </div>
+      </div>
+      
+      <div class="commands">
+        <div class="command-chip">"Play [artist/song]"</div>
+        <div class="command-chip">"Pause" / "Resume"</div>
+        <div class="command-chip">"Next song"</div>
+        <div class="command-chip">"What's playing?"</div>
+        <div class="command-chip">"Volume up/down"</div>
+        <div class="command-chip">"Play something happy"</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  
+  <script>
+    // DOM Elements
+    const micButton = document.getElementById('micButton');
+    const micLabel = document.getElementById('micLabel');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const conversation = document.getElementById('conversation');
+    const trackName = document.getElementById('trackName');
+    const trackArtist = document.getElementById('trackArtist');
+    const albumArt = document.getElementById('albumArt');
+    
+    // State
+    let ws = null;
+    let isListening = false;
+    let mediaStream = null;
+    let audioContext = null;
+    let audioProcessor = null;
+    let spotifyPlayer = null;
+    
+    // ================== WEBSOCKET ==================
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://${window.location.host}/ws`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'connected':
+            statusIndicator.classList.add('connected');
+            statusText.textContent = 'Connected - Ready to listen';
+            micButton.disabled = false;
+            micLabel.textContent = 'Click to speak';
+            break;
+          
+          case 'transcript':
+            addMessage(data.role, data.text);
+            break;
+          
+          case 'audio_mp3':
+            playMP3Audio(data.data);
+            break;
+        }
+      };
+      
+      ws.onclose = () => {
+        statusIndicator.classList.remove('connected');
+        statusText.textContent = 'Disconnected, reconnecting...';
+        micButton.disabled = true;
+        setTimeout(connectWebSocket, 2000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+    
+    // ================== MESSAGES ==================
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `
+        <div class="message-role">${role === 'user' ? '👤 You' : '🤖 Music Buddy'}</div>
+        ${text}
+      `;
+      conversation.appendChild(div);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+    
+    // ================== AUDIO PLAYBACK ==================
+    function playMP3Audio(base64Data) {
+      const audio = new Audio('data:audio/mp3;base64,' + base64Data);
+      audio.play().catch(e => console.error('Audio playback error:', e));
+    }
+    
+    // ================== MICROPHONE ==================
+    async function startListening() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const nativeSampleRate = audioContext.sampleRate;
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        
+        // Resample to 16kHz
+        function resample(inputBuffer, fromRate, toRate) {
+          const ratio = fromRate / toRate;
+          const newLength = Math.round(inputBuffer.length / ratio);
+          const result = new Float32Array(newLength);
+          
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = i * ratio;
+            const srcIndexFloor = Math.floor(srcIndex);
+            const srcIndexCeil = Math.min(srcIndexFloor + 1, inputBuffer.length - 1);
+            const t = srcIndex - srcIndexFloor;
+            result[i] = inputBuffer[srcIndexFloor] * (1 - t) + inputBuffer[srcIndexCeil] * t;
+          }
+          
+          return result;
+        }
+        
+        audioProcessor.onaudioprocess = (e) => {
+          if (ws?.readyState === WebSocket.OPEN && isListening) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            
+            const resampled = nativeSampleRate === 16000 
+              ? inputData 
+              : resample(inputData, nativeSampleRate, 16000);
+            
+            // Float32 to Int16
+            const pcmData = new Int16Array(resampled.length);
+            for (let i = 0; i < resampled.length; i++) {
+              const s = Math.max(-1, Math.min(1, resampled[i]));
+              pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            ws.send(pcmData.buffer);
+          }
+        };
+        
+        source.connect(audioProcessor);
+        audioProcessor.connect(audioContext.destination);
+        
+        isListening = true;
+        micButton.classList.add('listening');
+        micLabel.textContent = 'Listening... Click to stop';
+        statusText.textContent = '🎤 Listening...';
+        statusIndicator.classList.add('listening');
+        
+      } catch (error) {
+        console.error('Microphone error:', error);
+        alert('Microphone access is required!');
+      }
+    }
+    
+    function stopListening() {
+      if (audioProcessor) {
+        audioProcessor.disconnect();
+        audioProcessor = null;
+      }
+      
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      
+      isListening = false;
+      micButton.classList.remove('listening');
+      micLabel.textContent = 'Click to speak';
+      statusText.textContent = 'Connected - Ready to listen';
+      statusIndicator.classList.remove('listening');
+    }
+    
+    micButton.addEventListener('click', () => {
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+    
+    // ================== SPOTIFY WEB PLAYBACK SDK ==================
+    async function fetchSpotifyToken() {
+      const response = await fetch('/api/spotify-token');
+      const data = await response.json();
+      return data.token;
+    }
+    
+    window.onSpotifyWebPlaybackSDKReady = async () => {
+      console.log('Spotify SDK ready');
+      
+      const token = await fetchSpotifyToken();
+      
+      spotifyPlayer = new Spotify.Player({
+        name: 'Music Buddy Web Player',
+        getOAuthToken: async (cb) => {
+          const token = await fetchSpotifyToken();
+          cb(token);
+        },
+        volume: 0.5
+      });
+      
+      spotifyPlayer.addListener('ready', async ({ device_id }) => {
+        console.log('Spotify Player ready, Device ID:', device_id);
+        
+        // Send device ID to server
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'device_id', deviceId: device_id }));
+        }
+        
+        // Also via REST
+        await fetch('/api/set-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: device_id })
+        });
+      });
+      
+      spotifyPlayer.addListener('player_state_changed', (state) => {
+        if (state?.track_window?.current_track) {
+          const track = state.track_window.current_track;
+          trackName.textContent = track.name;
+          trackArtist.textContent = track.artists.map(a => a.name).join(', ');
+          
+          if (track.album?.images?.[0]?.url) {
+            albumArt.innerHTML = `<img src="${track.album.images[0].url}" alt="Album">`;
+          }
+        }
+      });
+      
+      spotifyPlayer.addListener('initialization_error', ({ message }) => {
+        console.error('Spotify init error:', message);
+      });
+      
+      spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('Spotify auth error:', message);
+      });
+      
+      spotifyPlayer.addListener('playback_error', ({ message }) => {
+        console.error('Spotify playback error:', message);
+      });
+      
+      await spotifyPlayer.connect();
+    };
+    
+    // ================== INIT ==================
+    connectWebSocket();
+  </script>
+</body>
+</html>

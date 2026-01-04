@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎵 Music Buddy - AI Voice Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #1DB954, #1ed760);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      color: #888;
+      font-size: 1.1em;
+    }
+    
+    .agents-status {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    
+    .agent-badge {
+      font-size: 0.75em;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(29, 185, 84, 0.2);
+      border: 1px solid rgba(29, 185, 84, 0.3);
+      color: #1DB954;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 25px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff4444;
+      transition: all 0.3s;
+    }
+    
+    .status-indicator.connected {
+      background: #1DB954;
+      box-shadow: 0 0 10px #1DB954;
+    }
+    
+    .status-indicator.listening {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    
+    .status-text {
+      flex: 1;
+      font-size: 0.95em;
+    }
+    
+    .mic-section {
+      text-align: center;
+      padding: 30px;
+    }
+    
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #1DB954, #169c46);
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(29, 185, 84, 0.3);
+    }
+    
+    .mic-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(29, 185, 84, 0.4);
+    }
+    
+    .mic-button.listening {
+      background: linear-gradient(145deg, #ff6b6b, #ee5253);
+      animation: pulse 1s infinite;
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+    }
+    
+    .mic-button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    
+    .mic-label {
+      margin-top: 15px;
+      font-size: 1.1em;
+      color: #888;
+    }
+    
+    .conversation {
+      height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 15px;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+      padding: 12px 16px;
+      border-radius: 15px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .message.assistant {
+      background: linear-gradient(135deg, #1DB954, #169c46);
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+    }
+    
+    .message-role {
+      font-size: 0.75em;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+    
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px;
+      background: rgba(29, 185, 84, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(29, 185, 84, 0.2);
+    }
+    
+    .album-art {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      overflow: hidden;
+    }
+    
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .track-info h3 {
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+    
+    .track-info p {
+      color: #888;
+    }
+    
+    .commands {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .command-chip {
+      padding: 8px 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      font-size: 0.85em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎵 Music Buddy</h1>
+    <p>Multi-Agent AI Voice Assistant</p>
+    <div class="agents-status">
+      <span class="agent-badge">🎯 Orchestrator</span>
+      <span class="agent-badge">🗣️ Speech</span>
+      <span class="agent-badge">💬 Conversation</span>
+      <span class="agent-badge">😊 Sentiment</span>
+      <span class="agent-badge">🎧 Spotify</span>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="status-bar">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <span class="status-text" id="statusText">Connecting...</span>
+    </div>
+    
+    <div class="card mic-section">
+      <button class="mic-button" id="micButton" disabled>🎤</button>
+      <p class="mic-label" id="micLabel">Waiting for connection...</p>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">🎧 Now Playing</h2>
+      <div class="now-playing" id="nowPlaying">
+        <div class="album-art" id="albumArt">🎵</div>
+        <div class="track-info">
+          <h3 id="trackName">-</h3>
+          <p id="trackArtist">-</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px;">💬 Conversation</h2>
+      <div class="conversation" id="conversation">
+        <div class="message assistant">
+          <div class="message-role">🤖 Music Buddy</div>
+          Hello! I'm Music Buddy. Just speak naturally and I'll control your music. Try saying "play some jazz" or "next song"!
+        </div>
+      </div>
+      
+      <div class="commands">
+        <div class="command-chip">"Play [artist/song]"</div>
+        <div class="command-chip">"Pause" / "Resume"</div>
+        <div class="command-chip">"Next song"</div>
+        <div class="command-chip">"What's playing?"</div>
+        <div class="command-chip">"Volume up/down"</div>
+        <div class="command-chip">"Play something happy"</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  
+  <script>
+    // DOM Elements
+    const micButton = document.getElementById('micButton');
+    const micLabel = document.getElementById('micLabel');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const conversation = document.getElementById('conversation');
+    const trackName = document.getElementById('trackName');
+    const trackArtist = document.getElementById('trackArtist');
+    const albumArt = document.getElementById('albumArt');
+    
+    // State
+    let ws = null;
+    let isListening = false;
+    let mediaStream = null;
+    let audioContext = null;
+    let audioProcessor = null;
+    let spotifyPlayer = null;
+    
+    // ================== WEBSOCKET ==================
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://${window.location.host}/ws`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'connected':
+            statusIndicator.classList.add('connected');
+            statusText.textContent = 'Connected - Starting microphone...';
+            micButton.disabled = false;
+            wsReady = true;
+            checkAutoStart();
+            break;
+          
+          case 'transcript':
+            addMessage(data.role, data.text);
+            break;
+          
+          case 'transcript_delta':
+            // Real-time transcript updates from AI
+            updateOrCreateAssistantMessage(data.text);
+            break;
+          
+          case 'transcript_done':
+            // Final transcript - ensure it's shown
+            finalizeAssistantMessage(data.text);
+            break;
+            
+          case 'audio':
+            // PCM16 audio from OpenAI Realtime - play it
+            playPCMAudio(data.data);
+            break;
+          
+          case 'audio_mp3':
+            playMP3Audio(data.data);
+            break;
+          
+          case 'listening_state':
+            updateListeningState(data.state);
+            break;
+          
+          case 'response_done':
+            // Response complete - microphone should resume (server sends echo_suppress: false)
+            console.log('Response done');
+            break;
+          
+          case 'echo_suppress':
+            // Pause/resume microphone to prevent hearing assistant's own voice
+            if (data.suppress) {
+              pauseMicrophone();
+            } else {
+              resumeMicrophone();
+            }
+            break;
+          
+          case 'assistant_control':
+            // Control assistant voice (mute/unmute/volume)
+            if (data.action === 'mute') {
+              muteAssistant();
+              addMessage('assistant', '🔇 My voice is now muted.');
+            } else if (data.action === 'unmute') {
+              unmuteAssistant();
+              addMessage('assistant', '🔊 My voice is back on.');
+            } else if (data.action === 'set_volume' && data.level !== undefined) {
+              setAssistantVolume(data.level);
+              addMessage('assistant', `🔊 My voice volume is now ${data.level}%.`);
+            }
+            break;
+        }
+      };
+      
+      ws.onclose = () => {
+        statusIndicator.classList.remove('connected');
+        statusIndicator.classList.remove('listening');
+        statusText.textContent = 'Disconnected, reconnecting...';
+        micButton.disabled = true;
+        wsReady = false;
+        autoStarted = false; // Reset so auto-start works on reconnect
+        
+        // Stop listening on disconnect
+        if (isListening) {
+          stopListening();
+        }
+        
+        setTimeout(connectWebSocket, 2000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+    
+    // ================== MESSAGES ==================
+    let currentAssistantMessage = null;
+    let currentAssistantText = '';
+    
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `
+        <div class="message-role">${role === 'user' ? '👤 You' : '🤖 Music Buddy'}</div>
+        ${text}
+      `;
+      conversation.appendChild(div);
+      conversation.scrollTop = conversation.scrollHeight;
+      
+      // Reset assistant message tracking when user speaks
+      if (role === 'user') {
+        currentAssistantMessage = null;
+        currentAssistantText = '';
+      }
+    }
+    
+    function updateOrCreateAssistantMessage(deltaText) {
+      currentAssistantText += deltaText;
+      
+      if (!currentAssistantMessage) {
+        currentAssistantMessage = document.createElement('div');
+        currentAssistantMessage.className = 'message assistant';
+        currentAssistantMessage.innerHTML = `
+          <div class="message-role">🤖 Music Buddy</div>
+          <span class="message-text">${currentAssistantText}</span>
+        `;
+        conversation.appendChild(currentAssistantMessage);
+      } else {
+        const textSpan = currentAssistantMessage.querySelector('.message-text');
+        if (textSpan) {
+          textSpan.textContent = currentAssistantText;
+        }
+      }
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+    
+    function finalizeAssistantMessage(fullText) {
+      if (currentAssistantMessage) {
+        const textSpan = currentAssistantMessage.querySelector('.message-text');
+        if (textSpan) {
+          textSpan.textContent = fullText;
+        }
+      }
+      currentAssistantMessage = null;
+      currentAssistantText = '';
+    }
+    
+    // ================== LISTENING STATE ==================
+    function updateListeningState(state) {
+      console.log('Listening state:', state);
+      switch (state) {
+        case 'listening':
+          micButton.classList.add('listening');
+          micLabel.textContent = '🎤 Listening...';
+          statusText.textContent = '🎤 I hear you, keep talking...';
+          statusIndicator.classList.add('listening');
+          break;
+        case 'processing':
+          micButton.classList.remove('listening');
+          micLabel.textContent = '⏳ Processing...';
+          statusText.textContent = '⏳ Processing your request...';
+          statusIndicator.classList.remove('listening');
+          break;
+        case 'ready':
+          micButton.classList.remove('listening');
+          micLabel.textContent = '👂 Always listening';
+          statusText.textContent = '👂 Listening... Just speak!';
+          statusIndicator.classList.remove('listening');
+          break;
+      }
+    }
+    
+    // ================== AUDIO PLAYBACK (Gapless Streaming) ==================
+    // Use a SEPARATE AudioContext for playback to avoid mic quality degradation
+    let playbackAudioContext = null;
+    let nextScheduledTime = 0;
+    let isAudioStreamActive = false;
+    let gainNode = null;
+    let audioChunkBuffer = []; // Buffer chunks before playing
+    let isBuffering = true;
+    const BUFFER_CHUNKS = 3; // Buffer 3 chunks before starting playback (~150ms)
+    let assistantVolume = 1.0; // Assistant voice volume (0-1)
+    let isAssistantMuted = false; // Mute state for assistant voice
+    
+    // Mute/unmute assistant voice
+    function muteAssistant() {
+      isAssistantMuted = true;
+      if (gainNode) gainNode.gain.value = 0;
+      console.log('Assistant voice muted');
+    }
+    
+    function unmuteAssistant() {
+      isAssistantMuted = false;
+      if (gainNode) gainNode.gain.value = assistantVolume;
+      console.log('Assistant voice unmuted');
+    }
+    
+    function setAssistantVolume(level) {
+      // level: 0-100
+      assistantVolume = Math.max(0, Math.min(1, level / 100));
+      if (!isAssistantMuted && gainNode) {
+        gainNode.gain.value = assistantVolume;
+      }
+      console.log('Assistant volume set to:', assistantVolume);
+    }
+    
+    function getPlaybackAudioContext() {
+      if (!playbackAudioContext || playbackAudioContext.state === 'closed') {
+        // Create playback context with standard sample rate for better compatibility
+        playbackAudioContext = new (window.AudioContext || window.webkitAudioContext)({ 
+          sampleRate: 24000,
+          latencyHint: 'playback' // Optimize for smooth playback, not low latency
+        });
+        gainNode = playbackAudioContext.createGain();
+        gainNode.gain.value = isAssistantMuted ? 0 : assistantVolume;
+        gainNode.connect(playbackAudioContext.destination);
+      }
+      // Resume if suspended (browser autoplay policy)
+      if (playbackAudioContext.state === 'suspended') {
+        playbackAudioContext.resume();
+      }
+      return playbackAudioContext;
+    }
+    
+    function resetAudioStream() {
+      nextScheduledTime = 0;
+      isAudioStreamActive = false;
+      audioChunkBuffer = [];
+      isBuffering = true;
+    }
+    
+    function scheduleBufferedChunks() {
+      const ctx = getPlaybackAudioContext();
+      const currentTime = ctx.currentTime;
+      
+      // Start scheduling from now + buffer time
+      if (!isAudioStreamActive || nextScheduledTime < currentTime) {
+        nextScheduledTime = currentTime + 0.1; // 100ms initial buffer
+        isAudioStreamActive = true;
+      }
+      
+      // Schedule all buffered chunks
+      while (audioChunkBuffer.length > 0) {
+        const audioBuffer = audioChunkBuffer.shift();
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(gainNode);
+        source.start(nextScheduledTime);
+        nextScheduledTime += audioBuffer.duration;
+      }
+      
+      isBuffering = false;
+    }
+    
+    async function playPCMAudio(base64Data) {
+      try {
+        const ctx = getPlaybackAudioContext();
+        
+        // Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Convert PCM16 to Float32 for Web Audio API
+        const pcm16 = new Int16Array(bytes.buffer);
+        const float32 = new Float32Array(pcm16.length);
+        for (let i = 0; i < pcm16.length; i++) {
+          float32[i] = pcm16[i] / 32768;
+        }
+        
+        // Create audio buffer
+        const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
+        audioBuffer.getChannelData(0).set(float32);
+        
+        if (isBuffering) {
+          // Collect chunks until we have enough for smooth playback
+          audioChunkBuffer.push(audioBuffer);
+          
+          if (audioChunkBuffer.length >= BUFFER_CHUNKS) {
+            scheduleBufferedChunks();
+          }
+        } else {
+          // Already streaming - schedule immediately
+          const currentTime = ctx.currentTime;
+          
+          // Catch up if we fell behind
+          if (nextScheduledTime < currentTime) {
+            nextScheduledTime = currentTime + 0.02; // Small 20ms gap recovery
+          }
+          
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(gainNode);
+          source.start(nextScheduledTime);
+          nextScheduledTime += audioBuffer.duration;
+        }
+        
+      } catch (e) {
+        console.error('PCM audio playback error:', e);
+      }
+    }
+    
+    // ================== AUDIO PLAYBACK ==================
+    function playMP3Audio(base64Data) {
+      const audio = new Audio('data:audio/mp3;base64,' + base64Data);
+      audio.play().catch(e => console.error('Audio playback error:', e));
+    }
+    
+    // ================== ECHO SUPPRESSION ==================
+    let isMicrophonePaused = false;
+    let echoSuppressionTimeout = null;
+    
+    function pauseMicrophone() {
+      isMicrophonePaused = true;
+      micLabel.textContent = '🔇 Speaking...';
+      statusText.textContent = '🤖 Assistant is speaking...';
+      console.log('Microphone paused for echo suppression');
+      
+      // Safety timeout - auto-resume after 15 seconds max
+      if (echoSuppressionTimeout) {
+        clearTimeout(echoSuppressionTimeout);
+      }
+      echoSuppressionTimeout = setTimeout(() => {
+        console.log('Safety timeout: auto-resuming microphone');
+        resumeMicrophone();
+      }, 15000);
+    }
+    
+    function resumeMicrophone() {
+      if (echoSuppressionTimeout) {
+        clearTimeout(echoSuppressionTimeout);
+        echoSuppressionTimeout = null;
+      }
+      isMicrophonePaused = false;
+      micLabel.textContent = '👂 Always listening';
+      statusText.textContent = '👂 Listening... Just speak!';
+      console.log('Microphone resumed');
+      // Reset audio stream for next response
+      resetAudioStream();
+    }
+    
+    // ================== MICROPHONE (ALWAYS-ON) ==================
+    // Use a SEPARATE AudioContext for microphone input to prevent
+    // browser from degrading Spotify/system audio quality
+    let micAudioContext = null;
+    
+    async function startListening() {
+      console.log('startListening() called, current isListening:', isListening);
+      if (isListening) {
+        console.log('Already listening, ignoring');
+        return;
+      }
+      try {
+        // Create dedicated mic context - use default sample rate for better compatibility
+        // We'll resample to 16kHz ourselves
+        micAudioContext = new (window.AudioContext || window.webkitAudioContext)({
+          latencyHint: 'playback' // Use 'playback' to minimize interference with other audio
+        });
+        audioContext = micAudioContext; // Keep reference for cleanup
+        const nativeSampleRate = micAudioContext.sampleRate;
+        console.log('Mic AudioContext created, sampleRate:', nativeSampleRate);
+        
+        // CRITICAL: Disable ALL audio processing that causes volume ducking!
+        // echoCancellation, noiseSuppression, and autoGainControl all cause
+        // the browser/OS to reduce volume of other audio sources (like Spotify)
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            channelCount: 1,
+            echoCancellation: false,  // DISABLED - causes ducking of other audio!
+            noiseSuppression: false,  // DISABLED - interferes with audio routing
+            autoGainControl: false,   // DISABLED - interferes with audio routing
+            // Don't specify sampleRate - let browser use default for stability
+          }
+        });
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        
+        // Resample to 16kHz
+        function resample(inputBuffer, fromRate, toRate) {
+          const ratio = fromRate / toRate;
+          const newLength = Math.round(inputBuffer.length / ratio);
+          const result = new Float32Array(newLength);
+          
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = i * ratio;
+            const srcIndexFloor = Math.floor(srcIndex);
+            const srcIndexCeil = Math.min(srcIndexFloor + 1, inputBuffer.length - 1);
+            const t = srcIndex - srcIndexFloor;
+            result[i] = inputBuffer[srcIndexFloor] * (1 - t) + inputBuffer[srcIndexCeil] * t;
+          }
+          
+          return result;
+        }
+        
+        audioProcessor.onaudioprocess = (e) => {
+          // Don't send audio if microphone is paused (echo suppression)
+          if (ws?.readyState === WebSocket.OPEN && isListening && !isMicrophonePaused) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            
+            const resampled = nativeSampleRate === 16000 
+              ? inputData 
+              : resample(inputData, nativeSampleRate, 16000);
+            
+            // Float32 to Int16
+            const pcmData = new Int16Array(resampled.length);
+            for (let i = 0; i < resampled.length; i++) {
+              const s = Math.max(-1, Math.min(1, resampled[i]));
+              pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            ws.send(pcmData.buffer);
+          }
+        };
+        
+        source.connect(audioProcessor);
+        
+        // WORKAROUND: ScriptProcessor needs to be connected to process audio,
+        // but connecting to destination can cause audio ducking on some systems.
+        // Solution: Connect to a suspended/disconnected context or use minimal connection.
+        // We'll connect to a gain node but NOT to destination.
+        // This works in most browsers because ScriptProcessor processes on connect.
+        
+        // Try connecting to analyser node (doesn't output audio)
+        const analyser = micAudioContext.createAnalyser();
+        analyser.fftSize = 32; // Minimal processing
+        audioProcessor.connect(analyser);
+        // Note: NOT connecting analyser to destination - this prevents audio ducking
+        
+        isListening = true;
+        micButton.classList.add('listening');
+        micLabel.textContent = '👂 Always listening';
+        statusText.textContent = '👂 Listening... Just speak!';
+        statusIndicator.classList.add('listening');
+        console.log('Microphone started - always listening mode (no destination connection)');
+        
+      } catch (error) {
+        console.error('Microphone error:', error);
+        alert('Microphone access is required!');
+      }
+    }
+    
+    function stopListening() {
+      console.log('stopListening() called - muting microphone');
+      
+      if (audioProcessor) {
+        audioProcessor.disconnect();
+        audioProcessor = null;
+      }
+      
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      
+      // Close the mic-specific audio context
+      if (micAudioContext) {
+        micAudioContext.close();
+        micAudioContext = null;
+      }
+      audioContext = null;
+      
+      isListening = false;
+      micButton.classList.remove('listening');
+      micLabel.textContent = '🔇 Muted - Click to unmute';
+      statusText.textContent = '🔇 Microphone muted';
+      statusIndicator.classList.remove('listening');
+    }
+    
+    micButton.addEventListener('click', () => {
+      console.log('Mic button clicked, isListening:', isListening);
+      if (isListening) {
+        console.log('Muting...');
+        stopListening();
+      } else {
+        console.log('Starting listening...');
+        startListening();
+      }
+    });
+    
+    // ================== SPOTIFY WEB PLAYBACK SDK ==================
+    async function fetchSpotifyToken() {
+      const response = await fetch('/api/spotify-token');
+      const data = await response.json();
+      return data.accessToken;  // Server returns accessToken, not token
+    }
+    
+    window.onSpotifyWebPlaybackSDKReady = async () => {
+      console.log('Spotify SDK ready');
+      
+      const token = await fetchSpotifyToken();
+      
+      spotifyPlayer = new Spotify.Player({
+        name: 'Music Buddy Web Player',
+        getOAuthToken: async (cb) => {
+          const token = await fetchSpotifyToken();
+          cb(token);
+        },
+        volume: 0.5
+      });
+      
+      spotifyPlayer.addListener('ready', async ({ device_id }) => {
+        console.log('Spotify Player ready, Device ID:', device_id);
+        
+        // Send device ID to server
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'device_id', deviceId: device_id }));
+        }
+        
+        // Also via REST
+        await fetch('/api/set-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: device_id })
+        });
+      });
+      
+      spotifyPlayer.addListener('player_state_changed', (state) => {
+        if (state?.track_window?.current_track) {
+          const track = state.track_window.current_track;
+          trackName.textContent = track.name;
+          trackArtist.textContent = track.artists.map(a => a.name).join(', ');
+          
+          if (track.album?.images?.[0]?.url) {
+            albumArt.innerHTML = `<img src="${track.album.images[0].url}" alt="Album">`;
+          }
+        }
+      });
+      
+      spotifyPlayer.addListener('initialization_error', ({ message }) => {
+        console.error('Spotify init error:', message);
+      });
+      
+      spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('Spotify auth error:', message);
+      });
+      
+      spotifyPlayer.addListener('playback_error', ({ message }) => {
+        console.error('Spotify playback error:', message);
+      });
+      
+      await spotifyPlayer.connect();
+    };
+    
+    // ================== INIT ==================
+    let wsReady = false;
+    let autoStarted = false;
+    let autoStartAttempts = 0;
+    const MAX_AUTO_START_ATTEMPTS = 3;
+    
+    async function checkAutoStart() {
+      console.log('checkAutoStart called, wsReady:', wsReady, 'autoStarted:', autoStarted, 'isListening:', isListening, 'attempts:', autoStartAttempts);
+      
+      // Auto-start listening once WebSocket is connected
+      if (wsReady && !autoStarted && !isListening && autoStartAttempts < MAX_AUTO_START_ATTEMPTS) {
+        autoStartAttempts++;
+        autoStarted = true;
+        console.log(`Auto-starting microphone (attempt ${autoStartAttempts})...`);
+        
+        // Small delay to ensure WebSocket is fully ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check again if conditions still hold
+        if (!isListening && ws?.readyState === WebSocket.OPEN) {
+          try {
+            await startListening();
+            console.log('✅ Auto-start listening successful');
+            statusText.textContent = '👂 Listening... Just speak!';
+          } catch (err) {
+            console.error('❌ Auto-start failed:', err.name, err.message);
+            autoStarted = false; // Allow retry
+            
+            if (err.name === 'NotAllowedError') {
+              // User interaction required - show prompt
+              micLabel.textContent = '🎤 Click to start';
+              statusText.textContent = '🔒 Click mic button to enable listening';
+              console.log('Microphone permission denied - user must click');
+            } else {
+              // Other error - retry after delay
+              micLabel.textContent = '🎤 Click to retry';
+              statusText.textContent = '⚠️ Mic error - click to retry';
+              
+              if (autoStartAttempts < MAX_AUTO_START_ATTEMPTS) {
+                console.log('Will retry auto-start in 2 seconds...');
+                setTimeout(checkAutoStart, 2000);
+              }
+            }
+          }
+        } else {
+          console.log('Conditions changed, resetting autoStarted flag');
+          autoStarted = false;
+        }
+      }
+    }
+    
+    // Click handler for manual start is handled by addEventListener below
+    
+    // Start WebSocket connection
+    connectWebSocket();
+    
+    // Also try auto-start when page is fully loaded (backup)
+    window.addEventListener('load', () => {
+      console.log('Window loaded, checking auto-start in 1.5s...');
+      setTimeout(checkAutoStart, 1500);
+    });
+  </script>
+</body>
+</html>

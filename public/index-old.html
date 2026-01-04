@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Müzik Dostum - Sesli AI Müzik Arkadaşı</title>
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 5px;
+      background: linear-gradient(90deg, #1db954, #1ed760);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .header p {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+    }
+    
+    /* Status */
+    .status-bar {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 15px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      margin: 15px 0;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f44;
+    }
+    
+    .status-dot.connected {
+      background: #1db954;
+      box-shadow: 0 0 10px #1db95466;
+    }
+    
+    /* Now Playing */
+    .now-playing {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .album-art {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      overflow: hidden;
+    }
+    
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .track-info {
+      flex: 1;
+    }
+    
+    .track-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    
+    .track-artist {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+    }
+    
+    .not-playing {
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+    }
+    
+    /* Chat */
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255,255,255,0.03);
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      min-height: 300px;
+      max-height: 400px;
+    }
+    
+    .message {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      align-self: flex-end;
+      background: #1db954;
+      color: #fff;
+    }
+    
+    .message.assistant {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.1);
+    }
+    
+    .message.system {
+      align-self: center;
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      padding: 8px 16px;
+    }
+    
+    .message .typing {
+      display: inline-block;
+    }
+    
+    .message .typing::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+    
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+    
+    /* Voice Button */
+    .voice-controls {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .mic-button {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #1db954, #1ed760);
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(29, 185, 84, 0.3);
+    }
+    
+    .mic-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 25px rgba(29, 185, 84, 0.4);
+    }
+    
+    .mic-button:active {
+      transform: scale(0.95);
+    }
+    
+    .mic-button.listening {
+      animation: pulse 1.5s infinite;
+      background: linear-gradient(135deg, #e91e63, #f44336);
+    }
+    
+    .mic-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.4); }
+      70% { box-shadow: 0 0 0 20px rgba(233, 30, 99, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(233, 30, 99, 0); }
+    }
+    
+    .mic-status {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    /* Text Input */
+    .text-input-container {
+      display: flex;
+      gap: 10px;
+      padding: 15px 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .text-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 25px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    
+    .text-input::placeholder {
+      color: rgba(255,255,255,0.4);
+    }
+    
+    .send-button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
+      background: #1db954;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .send-button:hover {
+      background: #1ed760;
+    }
+    
+    .send-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Visualizer */
+    .visualizer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 30px;
+      margin-top: 10px;
+    }
+    
+    .visualizer-bar {
+      width: 4px;
+      height: 10px;
+      background: #1db954;
+      border-radius: 2px;
+      transition: height 0.1s ease;
+    }
+    
+    .visualizer.active .visualizer-bar {
+      animation: visualize 0.5s infinite ease-in-out;
+    }
+    
+    .visualizer.active .visualizer-bar:nth-child(1) { animation-delay: 0s; }
+    .visualizer.active .visualizer-bar:nth-child(2) { animation-delay: 0.1s; }
+    .visualizer.active .visualizer-bar:nth-child(3) { animation-delay: 0.2s; }
+    .visualizer.active .visualizer-bar:nth-child(4) { animation-delay: 0.3s; }
+    .visualizer.active .visualizer-bar:nth-child(5) { animation-delay: 0.4s; }
+    
+    @keyframes visualize {
+      0%, 100% { height: 10px; }
+      50% { height: 25px; }
+    }
+    
+    /* Error */
+    .error-banner {
+      background: #f44336;
+      color: #fff;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin: 15px 0;
+      display: none;
+    }
+    
+    .error-banner.show {
+      display: block;
+    }
+    
+    /* Track Details Panel */
+    .track-details-panel {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 15px 0;
+      display: none;
+    }
+    
+    .track-details-panel.show {
+      display: block;
+    }
+    
+    .track-details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .track-details-header h3 {
+      font-size: 1rem;
+      color: #1db954;
+    }
+    
+    .close-details {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 5px;
+    }
+    
+    .close-details:hover {
+      color: #fff;
+    }
+    
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    
+    .detail-item {
+      background: rgba(255,255,255,0.03);
+      padding: 12px;
+      border-radius: 10px;
+    }
+    
+    .detail-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    
+    .detail-value {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    /* Audio Features */
+    .audio-features {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .audio-features h4 {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 12px;
+    }
+    
+    .feature-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .feature-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .feature-name {
+      width: 100px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .feature-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .feature-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .feature-fill.energy { background: linear-gradient(90deg, #ff6b6b, #feca57); }
+    .feature-fill.danceability { background: linear-gradient(90deg, #5f27cd, #a55eea); }
+    .feature-fill.valence { background: linear-gradient(90deg, #10ac84, #1dd1a1); }
+    .feature-fill.acousticness { background: linear-gradient(90deg, #2e86de, #54a0ff); }
+    .feature-fill.instrumentalness { background: linear-gradient(90deg, #ff9f43, #feca57); }
+    
+    .feature-percent {
+      width: 40px;
+      text-align: right;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.8);
+    }
+    
+    /* Genres */
+    .genres-section {
+      margin-top: 15px;
+    }
+    
+    .genres-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .genre-tag {
+      background: rgba(29, 185, 84, 0.2);
+      color: #1db954;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+    }
+    
+    /* Info Button */
+    .info-button {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    
+    .info-button:hover {
+      background: #1db954;
+    }
+    
+    .now-playing-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎵 Müzik Dostum</h1>
+      <p>Sesli AI müzik arkadaşın</p>
+    </div>
+    
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="status-dot" id="wsStatus"></div>
+        <span>Bağlantı</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="spotifyStatus"></div>
+        <span>Spotify</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="micStatus"></div>
+        <span>Mikrofon</span>
+      </div>
+    </div>
+    
+    <div class="error-banner" id="errorBanner"></div>
+    
+    <div class="now-playing" id="nowPlaying">
+      <div class="album-art" id="albumArt">🎵</div>
+      <div class="track-info">
+        <div class="track-name not-playing" id="trackName">Henüz bir şey çalmıyor</div>
+        <div class="track-artist" id="trackArtist"></div>
+        <div class="track-meta" id="trackMeta" style="font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 5px;"></div>
+      </div>
+      <button class="info-button" id="infoButton" title="Şarkı Detayları" style="display: none;">ℹ️</button>
+    </div>
+    
+    <!-- Track Details Panel -->
+    <div class="track-details-panel" id="trackDetailsPanel">
+      <div class="track-details-header">
+        <h3>📊 Şarkı Detayları</h3>
+        <button class="close-details" id="closeDetails">&times;</button>
+      </div>
+      
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="detail-label">Albüm</div>
+          <div class="detail-value" id="detailAlbum">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Yayın Tarihi</div>
+          <div class="detail-value" id="detailRelease">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Popülerlik</div>
+          <div class="detail-value" id="detailPopularity">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Tempo</div>
+          <div class="detail-value" id="detailTempo">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Tonalite</div>
+          <div class="detail-value" id="detailKey">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Süre</div>
+          <div class="detail-value" id="detailDuration">-</div>
+        </div>
+      </div>
+      
+      <div class="audio-features">
+        <h4>🎛️ Ses Özellikleri</h4>
+        <div class="feature-bars">
+          <div class="feature-bar">
+            <span class="feature-name">Enerji</span>
+            <div class="feature-track">
+              <div class="feature-fill energy" id="featureEnergy" style="width: 0%"></div>
+            </div>
+            <span class="feature-percent" id="featureEnergyVal">0%</span>
+          </div>
+          <div class="feature-bar">
+            <span class="feature-name">Dans</span>
+            <div class="feature-track">
+              <div class="feature-fill danceability" id="featureDance" style="width: 0%"></div>
+            </div>
+            <span class="feature-percent" id="featureDanceVal">0%</span>
+          </div>
+          <div class="feature-bar">
+            <span class="feature-name">Pozitiflik</span>
+            <div class="feature-track">
+              <div class="feature-fill valence" id="featureValence" style="width: 0%"></div>
+            </div>
+            <span class="feature-percent" id="featureValenceVal">0%</span>
+          </div>
+          <div class="feature-bar">
+            <span class="feature-name">Akustik</span>
+            <div class="feature-track">
+              <div class="feature-fill acousticness" id="featureAcoustic" style="width: 0%"></div>
+            </div>
+            <span class="feature-percent" id="featureAcousticVal">0%</span>
+          </div>
+          <div class="feature-bar">
+            <span class="feature-name">Enstrümantal</span>
+            <div class="feature-track">
+              <div class="feature-fill instrumentalness" id="featureInstrumental" style="width: 0%"></div>
+            </div>
+            <span class="feature-percent" id="featureInstrumentalVal">0%</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="genres-section">
+        <h4 style="font-size: 0.85rem; color: rgba(255,255,255,0.7);">🏷️ Türler</h4>
+        <div class="genres-list" id="genresList">
+          <span class="genre-tag">Yükleniyor...</span>
+        </div>
+      </div>
+      
+      <div style="margin-top: 15px; text-align: center;">
+        <a id="spotifyLink" href="#" target="_blank" style="color: #1db954; text-decoration: none; font-size: 0.9rem;">
+          🔗 Spotify'da Aç
+        </a>
+      </div>
+    </div>
+    
+    <div class="chat-container">
+      <div class="chat-messages" id="chatMessages">
+        <div class="message system">
+          Merhaba! Ben senin müzik arkadaşınım. 🎵<br>
+          Mikrofon butonuna bas ve benimle konuş, ya da aşağıya yaz.
+        </div>
+      </div>
+      
+      <div class="voice-controls">
+        <button class="mic-button" id="micButton" disabled>🎤</button>
+        <div class="mic-status" id="micStatusText">Bağlanıyor...</div>
+        <div class="visualizer" id="visualizer">
+          <div class="visualizer-bar"></div>
+          <div class="visualizer-bar"></div>
+          <div class="visualizer-bar"></div>
+          <div class="visualizer-bar"></div>
+          <div class="visualizer-bar"></div>
+        </div>
+      </div>
+      
+      <div class="text-input-container">
+        <input type="text" class="text-input" id="textInput" placeholder="Mesajını yaz..." disabled>
+        <button class="send-button" id="sendButton" disabled>Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const micButton = document.getElementById('micButton');
+    const micStatusText = document.getElementById('micStatusText');
+    const visualizer = document.getElementById('visualizer');
+    const chatMessages = document.getElementById('chatMessages');
+    const textInput = document.getElementById('textInput');
+    const sendButton = document.getElementById('sendButton');
+    const wsStatusDot = document.getElementById('wsStatus');
+    const spotifyStatusDot = document.getElementById('spotifyStatus');
+    const micStatusDot = document.getElementById('micStatus');
+    const errorBanner = document.getElementById('errorBanner');
+    const trackName = document.getElementById('trackName');
+    const trackArtist = document.getElementById('trackArtist');
+    const trackMeta = document.getElementById('trackMeta');
+    const albumArt = document.getElementById('albumArt');
+    const infoButton = document.getElementById('infoButton');
+    const trackDetailsPanel = document.getElementById('trackDetailsPanel');
+    const closeDetails = document.getElementById('closeDetails');
+    
+    // State
+    let ws = null;
+    let audioContext = null;
+    let mediaStream = null;
+    let processor = null;
+    let isListening = false;
+    let isConnected = false;
+    let currentAssistantMessage = null;
+    let currentTrackId = null;
+    
+    // Spotify Web Playback SDK
+    let spotifyPlayer = null;
+    let spotifyDeviceId = null;
+    let spotifyToken = null;
+    
+    // Initialize Spotify Web Playback SDK
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      console.log('🎵 Spotify Web Playback SDK hazır');
+      // Token'ı al ve player'ı başlat
+      fetchSpotifyToken();
+    };
+    
+    // Check if SDK already loaded
+    if (window.Spotify) {
+      console.log('🎵 Spotify SDK zaten yüklü');
+      fetchSpotifyToken();
+    }
+    
+    async function fetchSpotifyToken() {
+      console.log('🔑 Spotify token alınıyor...');
+      try {
+        const response = await fetch('/api/spotify-token');
+        const data = await response.json();
+        console.log('🔑 Token yanıtı:', data.accessToken ? 'Token alındı' : 'Token yok');
+        if (data.accessToken) {
+          spotifyToken = data.accessToken;
+          initializeSpotifyPlayer();
+        } else {
+          console.error('Token alınamadı:', data);
+        }
+      } catch (error) {
+        console.error('Spotify token alınamadı:', error);
+      }
+    }
+    
+    function initializeSpotifyPlayer() {
+      console.log('🎧 Spotify Player başlatılıyor...');
+      
+      if (!window.Spotify) {
+        console.error('Spotify SDK yüklenmemiş!');
+        return;
+      }
+      
+      spotifyPlayer = new Spotify.Player({
+        name: 'Müzik Dostum Web Player',
+        getOAuthToken: cb => { 
+          console.log('🔑 OAuth token istendi');
+          cb(spotifyToken); 
+        },
+        volume: 0.5
+      });
+      
+      // Error handling
+      spotifyPlayer.addListener('initialization_error', ({ message }) => {
+        console.error('Init Error:', message);
+      });
+      
+      spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('Auth Error:', message);
+        // Token yenilenmesi gerekebilir
+        setTimeout(fetchSpotifyToken, 1000);
+      });
+      
+      spotifyPlayer.addListener('account_error', ({ message }) => {
+        console.error('Account Error:', message);
+        showError('Spotify Premium hesabı gerekli');
+      });
+      
+      spotifyPlayer.addListener('playback_error', ({ message }) => {
+        console.error('Playback Error:', message);
+      });
+      
+      // Playback status updates
+      spotifyPlayer.addListener('player_state_changed', state => {
+        if (!state) return;
+        
+        const track = state.track_window.current_track;
+        if (track) {
+          updateNowPlayingFromSDK(track, !state.paused);
+        }
+      });
+      
+      // Ready
+      spotifyPlayer.addListener('ready', ({ device_id }) => {
+        console.log('✅ Spotify Web Player hazır! Device ID:', device_id);
+        spotifyDeviceId = device_id;
+        spotifyStatusDot.classList.remove('disconnected');
+        spotifyStatusDot.classList.add('connected');
+        
+        // Server'a device ID'yi bildir
+        fetch('/api/set-device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: device_id })
+        });
+      });
+      
+      // Not Ready
+      spotifyPlayer.addListener('not_ready', ({ device_id }) => {
+        console.log('⚠️ Spotify Web Player hazır değil:', device_id);
+        spotifyStatusDot.classList.remove('connected');
+        spotifyStatusDot.classList.add('disconnected');
+      });
+      
+      // Connect to the player
+      spotifyPlayer.connect().then(success => {
+        if (success) {
+          console.log('✅ Spotify Web Player\'a bağlanıldı');
+        }
+      });
+    }
+    
+    function updateNowPlayingFromSDK(track, isPlaying) {
+      trackName.textContent = track.name;
+      trackArtist.textContent = track.artists.map(a => a.name).join(', ');
+      
+      if (track.album.images[0]) {
+        albumArt.src = track.album.images[0].url;
+        albumArt.style.display = 'block';
+      }
+      
+      // Track ID değiştiyse details'i güncelle
+      if (track.id !== currentTrackId) {
+        currentTrackId = track.id;
+        fetchTrackDetails(track.id);
+      }
+    }
+    
+    // Connect to WebSocket
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket bağlandı');
+      };
+      
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'connected':
+            isConnected = true;
+            wsStatusDot.classList.add('connected');
+            micButton.disabled = false;
+            textInput.disabled = false;
+            sendButton.disabled = false;
+            micStatusText.textContent = 'Konuşmak için butona bas';
+            checkSpotifyStatus();
+            break;
+            
+          case 'speech_started':
+            micStatusText.textContent = 'Dinliyorum...';
+            visualizer.classList.add('active');
+            break;
+            
+          case 'speech_stopped':
+            micStatusText.textContent = 'İşleniyor...';
+            visualizer.classList.remove('active');
+            break;
+            
+          case 'transcript':
+            if (data.role === 'user') {
+              addMessage(data.text, 'user');
+            }
+            break;
+            
+          case 'transcript_delta':
+            if (data.role === 'assistant') {
+              if (!currentAssistantMessage) {
+                currentAssistantMessage = addMessage('', 'assistant');
+              }
+              currentAssistantMessage.textContent += data.text;
+              scrollToBottom();
+            }
+            break;
+            
+          case 'transcript_done':
+            currentAssistantMessage = null;
+            break;
+            
+          case 'audio':
+            playAudio(data.data);
+            break;
+            
+          case 'tool_result':
+            console.log('Tool sonucu:', data.name, data.result);
+            if (data.name === 'play_music' || data.name === 'get_now_playing') {
+              updateNowPlaying();
+            }
+            break;
+            
+          case 'response_done':
+            if (isListening) {
+              micStatusText.textContent = 'Dinliyorum...';
+            } else {
+              micStatusText.textContent = 'Konuşmak için butona bas';
+            }
+            break;
+            
+          case 'error':
+            showError(data.message);
+            break;
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket kapandı');
+        isConnected = false;
+        wsStatusDot.classList.remove('connected');
+        micButton.disabled = true;
+        textInput.disabled = true;
+        sendButton.disabled = true;
+        micStatusText.textContent = 'Bağlantı kesildi. Yeniden bağlanılıyor...';
+        
+        // Reconnect
+        setTimeout(connect, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket hatası:', error);
+        showError('Bağlantı hatası oluştu');
+      };
+    }
+    
+    // Audio playback - improved for smooth streaming
+    let audioBufferQueue = [];
+    let isAudioPlaying = false;
+    let scheduledEndTime = 0;
+    const BUFFER_AHEAD_TIME = 0.1; // 100ms buffer
+    
+    function playAudio(base64Data) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 24000
+        });
+      }
+      
+      // Resume context if suspended
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      // Decode base64 to PCM16
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Convert PCM16 to Float32 with smoothing
+      const pcm16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(pcm16.length);
+      for (let i = 0; i < pcm16.length; i++) {
+        float32[i] = pcm16[i] / 32768;
+      }
+      
+      // Create audio buffer
+      const audioBuffer = audioContext.createBuffer(1, float32.length, 24000);
+      audioBuffer.getChannelData(0).set(float32);
+      
+      // Schedule playback
+      scheduleAudioBuffer(audioBuffer);
+    }
+    
+    function scheduleAudioBuffer(buffer) {
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      
+      // Add a gain node for smooth volume
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 1.0;
+      
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Calculate start time
+      const currentTime = audioContext.currentTime;
+      const startTime = Math.max(currentTime + BUFFER_AHEAD_TIME, scheduledEndTime);
+      
+      // Small fade in/out to prevent clicks
+      gainNode.gain.setValueAtTime(0.8, startTime);
+      gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.01);
+      
+      source.start(startTime);
+      scheduledEndTime = startTime + buffer.duration;
+      
+      isAudioPlaying = true;
+      
+      source.onended = () => {
+        // Check if more audio is expected
+        setTimeout(() => {
+          if (audioContext.currentTime >= scheduledEndTime - 0.05) {
+            isAudioPlaying = false;
+          }
+        }, 100);
+      };
+    }
+    
+    // Stop all audio playback
+    function stopAudioPlayback() {
+      scheduledEndTime = 0;
+      isAudioPlaying = false;
+    }
+    
+    // Microphone handling
+    async function startListening() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)({
+            sampleRate: 24000
+          });
+        }
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 24000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+          } 
+        });
+        
+        micStatusDot.classList.add('connected');
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        
+        // Create ScriptProcessor for audio data
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+        
+        processor.onaudioprocess = (e) => {
+          if (!isListening || !ws || ws.readyState !== WebSocket.OPEN) return;
+          
+          const inputData = e.inputBuffer.getChannelData(0);
+          
+          // Convert Float32 to PCM16
+          const pcm16 = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          
+          // Convert to base64
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+          
+          // Send to server
+          ws.send(JSON.stringify({ type: 'audio', data: base64 }));
+        };
+        
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+        
+        isListening = true;
+        micButton.classList.add('listening');
+        micButton.textContent = '🔴';
+        micStatusText.textContent = 'Dinliyorum...';
+        visualizer.classList.add('active');
+        
+      } catch (error) {
+        console.error('Mikrofon hatası:', error);
+        showError('Mikrofon erişimi reddedildi. Lütfen izin verin.');
+        micStatusDot.classList.remove('connected');
+      }
+    }
+    
+    function stopListening() {
+      isListening = false;
+      
+      if (processor) {
+        processor.disconnect();
+        processor = null;
+      }
+      
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      
+      micButton.classList.remove('listening');
+      micButton.textContent = '🎤';
+      micStatusText.textContent = 'Konuşmak için butona bas';
+      visualizer.classList.remove('active');
+    }
+    
+    // UI helpers
+    function addMessage(text, role) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.textContent = text;
+      chatMessages.appendChild(div);
+      scrollToBottom();
+      return div;
+    }
+    
+    function scrollToBottom() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function showError(message) {
+      errorBanner.textContent = message;
+      errorBanner.classList.add('show');
+      setTimeout(() => {
+        errorBanner.classList.remove('show');
+      }, 5000);
+    }
+    
+    // Check Spotify status
+    async function checkSpotifyStatus() {
+      try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        
+        if (data.spotify) {
+          spotifyStatusDot.classList.add('connected');
+        } else {
+          showError('Spotify bağlı değil. npm run auth çalıştırın.');
+        }
+        
+        updateNowPlaying();
+      } catch (e) {
+        console.error('Durum kontrolü hatası:', e);
+      }
+    }
+    
+    // Update now playing
+    async function updateNowPlaying() {
+      try {
+        const response = await fetch('/api/now-playing');
+        const data = await response.json();
+        
+        if (data.playing || data.name) {
+          trackName.textContent = data.name;
+          trackName.classList.remove('not-playing');
+          trackArtist.textContent = data.artist;
+          
+          // Meta bilgileri
+          const metaParts = [];
+          if (data.album) metaParts.push(data.album);
+          if (data.popularity) metaParts.push(`⭐ ${data.popularity}/100`);
+          trackMeta.textContent = metaParts.join(' • ');
+          
+          if (data.albumArt) {
+            albumArt.innerHTML = `<img src="${data.albumArt}" alt="Album">`;
+          } else {
+            albumArt.innerHTML = '🎵';
+          }
+          
+          // Info butonu
+          if (data.trackId) {
+            currentTrackId = data.trackId;
+            infoButton.style.display = 'block';
+          }
+        } else {
+          trackName.textContent = 'Henüz bir şey çalmıyor';
+          trackName.classList.add('not-playing');
+          trackArtist.textContent = '';
+          trackMeta.textContent = '';
+          albumArt.innerHTML = '🎵';
+          infoButton.style.display = 'none';
+          currentTrackId = null;
+        }
+      } catch (e) {
+        console.error('Now playing hatası:', e);
+      }
+    }
+    
+    // Show track details
+    async function showTrackDetails() {
+      if (!currentTrackId) return;
+      
+      try {
+        const response = await fetch(`/api/track-details/${currentTrackId}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          showError('Şarkı detayları yüklenemedi');
+          return;
+        }
+        
+        // Detayları doldur
+        document.getElementById('detailAlbum').textContent = data.album || '-';
+        document.getElementById('detailRelease').textContent = data.releaseDate || '-';
+        document.getElementById('detailPopularity').textContent = data.popularity ? `${data.popularity}/100` : '-';
+        
+        // Audio features varsa göster
+        const audioFeaturesSection = document.querySelector('.audio-features');
+        if (data.audioFeatures) {
+          audioFeaturesSection.style.display = 'block';
+          document.getElementById('detailTempo').textContent = `${data.audioFeatures.tempo} BPM`;
+          document.getElementById('detailKey').textContent = data.audioFeatures.key || '-';
+          
+          updateFeatureBar('Energy', data.audioFeatures.energy);
+          updateFeatureBar('Dance', data.audioFeatures.danceability);
+          updateFeatureBar('Valence', data.audioFeatures.valence);
+          updateFeatureBar('Acoustic', data.audioFeatures.acousticness);
+          updateFeatureBar('Instrumental', data.audioFeatures.instrumentalness);
+        } else {
+          audioFeaturesSection.style.display = 'none';
+          document.getElementById('detailTempo').textContent = '-';
+          document.getElementById('detailKey').textContent = '-';
+        }
+        
+        // Süre
+        if (data.duration) {
+          const mins = Math.floor(data.duration / 60);
+          const secs = data.duration % 60;
+          document.getElementById('detailDuration').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Genres
+        const genresList = document.getElementById('genresList');
+        if (data.genres && data.genres.length > 0) {
+          genresList.innerHTML = data.genres.map(g => 
+            `<span class="genre-tag">${g}</span>`
+          ).join('');
+        } else {
+          genresList.innerHTML = '<span class="genre-tag" style="opacity: 0.5">Tür bilgisi yok</span>';
+        }
+        
+        // Spotify link
+        document.getElementById('spotifyLink').href = data.spotifyUrl || '#';
+        
+        // Panel'i göster
+        trackDetailsPanel.classList.add('show');
+        
+      } catch (e) {
+        console.error('Track details hatası:', e);
+        showError('Detaylar yüklenirken hata oluştu');
+      }
+    }
+    
+    function updateFeatureBar(name, value) {
+      const bar = document.getElementById(`feature${name}`);
+      const val = document.getElementById(`feature${name}Val`);
+      if (bar && val) {
+        bar.style.width = `${value}%`;
+        val.textContent = `${value}%`;
+      }
+    }
+    
+    function hideTrackDetails() {
+      trackDetailsPanel.classList.remove('show');
+    }
+    
+    // Send text message
+    function sendTextMessage() {
+      const text = textInput.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      
+      addMessage(text, 'user');
+      ws.send(JSON.stringify({ type: 'text', text }));
+      textInput.value = '';
+    }
+    
+    // Event listeners
+    micButton.addEventListener('click', () => {
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+    
+    sendButton.addEventListener('click', sendTextMessage);
+    
+    textInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendTextMessage();
+      }
+    });
+    
+    // Track details event listeners
+    infoButton.addEventListener('click', showTrackDetails);
+    closeDetails.addEventListener('click', hideTrackDetails);
+    
+    // Update now playing periodically
+    setInterval(updateNowPlaying, 5000);
+    
+    // Start
+    connect();
+  </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+sequenceDiagram
+    autonumber
+    
+    box rgb(200,230,255) Browser Client
+        participant User as 🎤 User
+        participant Browser as 🌐 Browser
+        participant SDK as 🎵 Spotify SDK
+    end
+    
+    box rgb(255,240,220) Node.js Server
+        participant Server as 🖥️ Express Server
+        participant Bus as 📨 MessageBus
+        participant A2A as 🔗 A2A Protocol
+        participant Log as 📝 server.log
+    end
+    
+    box rgb(255,230,180) A2A-Enabled Agents
+        participant Orch as 🎯 Orchestrator
+        participant Speech as 🗣️ Speech
+        participant Conv as 💬 Conversation
+        participant Sent as 😊 Sentiment
+        participant Spot as 🎵 Spotify
+    end
+    
+    box rgb(255,220,230) External APIs
+        participant Whisper as Whisper
+        participant GPT as GPT-4o
+        participant TTS as TTS-1-HD
+        participant SpotifyAPI as Spotify API
+    end
+
+    %% ============ PHASE 1: SERVER STARTUP ============
+    Note over Server,Log: 📦 PHASE 1: Server Startup (node server-agents.js)
+    
+    rect rgb(227,242,253)
+        Note over A2A: 🔗 A2A PROTOCOL INITIALIZATION
+        Server->>A2A: Initialize A2A Protocol Handler
+        A2A->>Log: [A2A] [PROTOCOL] A2A Protocol Handler initialized
+        A2A->>A2A: Create JSON-RPC 2.0 endpoints
+        Note right of A2A: /.well-known/agent.json<br/>/api/a2a/agents<br/>/api/a2a/tasks/send<br/>/api/a2a/rpc
+    end
+
+    %% ============ PHASE 2: AGENT REGISTRATION (A2A) ============
+    Note over Orch,Spot: 📋 PHASE 2: A2A Agent Registration
+    
+    rect rgb(200,255,200)
+        Note over A2A: 🔗 A2A AGENT CARD REGISTRATION
+        
+        Orch->>A2A: registerAgent("orchestrator", AgentCard)
+        Note right of A2A: AgentCard: {<br/>  name: "OrchestratorAgent",<br/>  skills: [coordinate_agents,<br/>    manage_sessions, list_agents]<br/>}
+        A2A->>Log: [A2A] [PROTOCOL] Agent registered: OrchestratorAgent {skills}
+        
+        Spot->>A2A: registerAgent("spotify", AgentCard)
+        Note right of A2A: AgentCard: {<br/>  name: "SpotifyAgent",<br/>  skills: [play_music, pause,<br/>    skip_next, play_by_mood...]<br/>}
+        A2A->>Log: [A2A] [PROTOCOL] Agent registered: SpotifyAgent {skills}
+        
+        Conv->>A2A: registerAgent("conversation", AgentCard)
+        A2A->>Log: [A2A] [PROTOCOL] Agent registered: ConversationAgent {skills}
+        
+        Sent->>A2A: registerAgent("sentiment", AgentCard)
+        A2A->>Log: [A2A] [PROTOCOL] Agent registered: SentimentAgent {skills}
+        
+        Speech->>A2A: registerAgent("speech", AgentCard)
+        A2A->>Log: [A2A] [PROTOCOL] Agent registered: SpeechAgent {skills}
+    end
+    
+    Server->>Log: [ORCHESTRATOR] All agents initialized with A2A Protocol
+    Note over Server: 🚀 Server listening on port 3000
+
+    %% ============ PHASE 3: CLIENT CONNECTION ============
+    Note over User,SDK: 🌐 PHASE 3: Client Connection
+    
+    User->>Browser: Opens http://localhost:3000
+    Browser->>Server: HTTP GET / (index.html)
+    Server-->>Browser: Return HTML + JavaScript
+    
+    Browser->>Server: WebSocket connect
+    Server->>Orch: registerSession(sessionId)
+    Orch->>Log: [ORCHESTRATOR] Session registered: session_xxx
+    Server->>Log: [SERVER] New connection: session_xxx
+    Server-->>Browser: WebSocket connected
+    
+    Browser->>SDK: Initialize Spotify Web Playback SDK
+    SDK->>SpotifyAPI: Connect player
+    SpotifyAPI-->>SDK: Device ID assigned
+    SDK->>Browser: Player ready (deviceId)
+    Browser->>Server: set-device {deviceId}
+    Server->>Log: [SERVER] Web Playback Device ID: xxx
+
+    %% ============ PHASE 4: USER SPEAKS ============
+    Note over User,SpotifyAPI: 🎤 PHASE 4: Voice Command - "Play Queen"
+    
+    User->>Browser: 🗣️ "Play Queen"
+    Browser->>Browser: VAD detects speech (level > 0.02)
+    Browser->>Log: 🎤 Speech detected
+    
+    loop Audio streaming
+        Browser->>Server: WebSocket: audio chunks (PCM 16kHz)
+    end
+    
+    Browser->>Browser: 1500ms silence detected
+    Browser->>Log: 🔇 Silence detected
+
+    %% ============ PHASE 5: SPEECH PROCESSING ============
+    Note over Speech,Whisper: 🗣️ PHASE 5: Speech-to-Text
+    
+    Server->>Bus: publish(audio:received, {audioData, sessionId})
+    Bus->>Speech: subscribe(audio:received)
+    Bus->>Log: [DEBUG] [BUS] Event: audio:received
+    
+    Speech->>Log: [SPEECH_AGENT] Processing 207480 bytes of audio
+    Speech->>Whisper: POST /v1/audio/transcriptions (whisper-1)
+    Whisper-->>Speech: {text: "Play Queen"}
+    Speech->>Log: [SPEECH_AGENT] Transcribed: "Play Queen"
+    
+    Speech->>Bus: publish(speech:transcribed, {text, sessionId})
+    Bus->>Log: [DEBUG] [BUS] Event: speech:transcribed
+    Bus->>Browser: transcript {text: "Play Queen"}
+
+    %% ============ PHASE 6: INTENT DETECTION ============
+    Note over Conv,GPT: 💬 PHASE 6: Intent Detection (Function Calling)
+    
+    Bus->>Conv: subscribe(speech:transcribed)
+    Conv->>Log: [CONVERSATION_AGENT] Processing: "Play Queen"
+    
+    Conv->>GPT: POST /v1/chat/completions (gpt-4o + tools)
+    Note right of GPT: Tools available:<br/>- play_specific_music<br/>- play_mood_music<br/>- pause_music<br/>- skip_to_next<br/>- general_chat
+    GPT-->>Conv: tool_calls: [{function: "play_specific_music", args: {query: "Queen"}}]
+    
+    Conv->>Log: [CONVERSATION_AGENT] Function called: play_specific_music {"query":"Queen"}
+    Conv->>Log: [CONVERSATION_AGENT] Intent detected {"intent":"play_music","query":"Queen","confidence":0.95}
+    Conv->>Log: [CONVERSATION_AGENT] Routing: play_music (confidence: 0.95)
+
+    %% ============ PHASE 7: SPOTIFY COMMAND ============
+    Note over Spot,SpotifyAPI: 🎵 PHASE 7: Spotify Playback
+    
+    Conv->>Bus: publish(spotify:command, {action: play_music, query: "Queen"})
+    Bus->>Log: [DEBUG] [BUS] Event: spotify:command
+    Bus->>Spot: subscribe(spotify:command)
+    
+    Spot->>Log: [SPOTIFY_AGENT] Command: play_music {"query":"Queen"}
+    
+    rect rgb(255,248,220)
+        Note over Spot: ensureDeviceActive() - Auto device selection
+        Spot->>SpotifyAPI: GET /me/player/devices
+        Spot->>Log: [SPOTIFY_AGENT] API Call: GET .../devices
+        SpotifyAPI-->>Spot: {devices: [{name: "Music Buddy Web Player", id: "xxx", active: false}]}
+        Spot->>Log: [SPOTIFY_AGENT] API Response: 200
+        Spot->>Log: [SPOTIFY_AGENT] Available devices: [{"name":"Music Buddy Web Player"...}]
+        
+        Spot->>SpotifyAPI: PUT /me/player {device_ids: ["xxx"]}
+        Spot->>Log: [SPOTIFY_AGENT] Transferring playback to device: xxx
+        Spot->>Log: [SPOTIFY_AGENT] API Call: PUT .../player
+        SpotifyAPI-->>Spot: 204 No Content
+        Spot->>Log: [SPOTIFY_AGENT] API Response: 204
+    end
+    
+    Spot->>SpotifyAPI: GET /search?q=Queen&type=track&limit=20
+    Spot->>Log: [SPOTIFY_AGENT] API Call: GET .../search?q=Queen...
+    SpotifyAPI-->>Spot: {tracks: [{name: "Bohemian Rhapsody", ...}, ...]}
+    Spot->>Log: [SPOTIFY_AGENT] API Response: 200
+    
+    Spot->>SpotifyAPI: PUT /me/player/play {uris: [...20 tracks]}
+    Spot->>Log: [SPOTIFY_AGENT] API Call: PUT .../player/play
+    SpotifyAPI-->>Spot: 204 No Content
+    Spot->>Log: [SPOTIFY_AGENT] API Response: 204
+    Spot->>Log: [SPOTIFY_AGENT] Playing 20 tracks starting with: Bohemian Rhapsody
+    
+    SDK->>User: 🎵 Music starts playing
+
+    %% ============ PHASE 8: RESPONSE GENERATION ============
+    Note over Speech,TTS: 🔊 PHASE 8: Text-to-Speech Response
+    
+    Spot->>Bus: publish(spotify:result, {success, track, artist})
+    Bus->>Log: [DEBUG] [BUS] Event: spotify:result
+    Bus->>Conv: subscribe(spotify:result)
+    
+    Conv->>Bus: publish(response:ready, {text: "Now playing Bohemian Rhapsody by Queen..."})
+    Bus->>Log: [DEBUG] [BUS] Event: response:ready
+    Bus->>Speech: subscribe(response:ready)
+    
+    rect rgb(255,235,235)
+        Note over Speech: Echo Suppression - Prevent feedback
+        Speech->>Bus: publish(client:echo_suppress, {suppress: true})
+        Bus->>Log: [DEBUG] [BUS] Event: client:echo_suppress
+        Bus->>Browser: echo_suppress {suppress: true}
+        Browser->>Browser: pauseMicrophone() - Stop sending audio
+    end
+    
+    Speech->>Log: [SPEECH_AGENT] Generating speech: "Now playing Bohemian Rhapsody..."
+    Speech->>TTS: POST /v1/audio/speech (tts-1-hd, voice: nova)
+    TTS-->>Speech: Audio stream (MP3)
+    
+    Speech->>Bus: publish(client:audio, {audioData})
+    Bus->>Log: [DEBUG] [BUS] Event: client:audio
+    Bus->>Browser: audio {base64 MP3}
+    Browser->>User: 🔊 "Now playing Bohemian Rhapsody by Queen"
+    
+    rect rgb(235,255,235)
+        Note over Speech: Echo Suppression OFF
+        Speech->>Bus: publish(client:echo_suppress, {suppress: false})
+        Bus->>Log: [DEBUG] [BUS] Event: client:echo_suppress
+        Bus->>Browser: echo_suppress {suppress: false}
+        Browser->>Browser: resumeMicrophone() - Resume listening
+    end
+
+    %% ============ PHASE 9: A2A REST API EXAMPLE ============
+    Note over A2A,Spot: 🔗 PHASE 9: External A2A Task (REST API)
+    
+    rect rgb(200,255,200)
+        Note over A2A: 🔗 A2A TASK FLOW (JSON-RPC 2.0)
+        
+        Note left of A2A: External system calls:<br/>curl -X POST /api/a2a/tasks/send<br/>-d '{"skillId":"play_by_mood",<br/>"input":{"mood":"happy"}}'
+        
+        A2A->>A2A: Receive JSON-RPC request
+        A2A->>A2A: Create Task {id, state: "submitted"}
+        A2A->>Log: [A2A] Task created: task_xxx (play_by_mood)
+        
+        A2A->>A2A: Find agent with skill "play_by_mood"
+        A2A->>A2A: Task state → "working"
+        
+        A2A->>Spot: Execute skill handler(input)
+        Spot->>SpotifyAPI: Search + Play happy music
+        SpotifyAPI-->>Spot: Track info
+        Spot-->>A2A: Result {success, track, artist}
+        
+        A2A->>A2A: Task state → "completed"
+        A2A->>Log: [A2A] Task completed: task_xxx
+        
+        Note left of A2A: Response:<br/>{"jsonrpc":"2.0",<br/>"result":{"id":"task_xxx",<br/>"state":"completed",<br/>"output":{...}}}
+    end
+
+    %% ============ NO AUDIO TIMEOUT EDGE CASE ============
+    Note over Speech,Browser: ⏱️ Edge Case: No Audio Timeout
+    
+    rect rgb(255,240,240)
+        Note over Speech: When mic paused during speech capture
+        User->>Browser: Speaks while echo suppression active
+        Browser->>Server: Audio arrives just before pause
+        Speech->>Speech: 🎤 Speech detected (isSpeaking = true)
+        Browser->>Browser: Mic paused (echo suppression)
+        Note over Speech: No more audio arrives...<br/>Silence timer can't trigger
+        Speech->>Speech: ⏱️ 500ms NO_AUDIO_TIMEOUT fires
+        Speech->>Log: [SPEECH_AGENT] ⏱️ No audio received timeout - processing captured speech
+        Speech->>Whisper: Process whatever was captured
+    end

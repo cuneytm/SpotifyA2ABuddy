@@ -1,0 +1,123 @@
+flowchart TB
+    subgraph USER["🎤 User Input"]
+        direction TB
+        MIC["Microphone<br/>Browser Audio API"]
+        VAD["Voice Activity Detection<br/>SPEECH_THRESHOLD: 0.02"]
+    end
+
+    subgraph CLIENT["🌐 Browser Client"]
+        direction TB
+        SDK["Spotify Web Playback SDK"]
+        WS["WebSocket Connection"]
+        AUDIO["Audio Playback"]
+    end
+
+    subgraph SERVER["🖥️ Node.js Server + A2A Protocol"]
+        direction TB
+        subgraph BUS["📨 MessageBus<br/>Event-Driven Pub/Sub"]
+            EVENTS["Events:<br/>speech:transcribed<br/>spotify:command<br/>response:ready<br/>client:echo_suppress"]
+        end
+        
+        subgraph A2A["🔗 A2A Protocol Handler<br/>Google Agent-to-Agent"]
+            CARDS["Agent Cards<br/>Skills & Capabilities"]
+            TASKS["Task Management<br/>submitted→working→completed"]
+            RPC["JSON-RPC 2.0<br/>/.well-known/agent.json"]
+        end
+        
+        subgraph LOGGING["📝 Logging System"]
+            LOG["server.log<br/>A2A Transactions<br/>All Events"]
+        end
+    end
+
+    subgraph AGENTS["🤖 Multi-Agent System (A2A Enabled)"]
+        direction TB
+        ORCH["🎯 OrchestratorAgent<br/>Skills: coordinate_agents<br/>manage_sessions, list_agents"]
+        
+        subgraph SPEECH["🗣️ SpeechAgent"]
+            STT["Speech-to-Text<br/>Skill: transcribe_audio"]
+            TTS["Text-to-Speech<br/>Skill: generate_speech"]
+            ECHO["Echo Suppression"]
+            NOAUDIO["No Audio Timeout<br/>500ms failsafe"]
+        end
+        
+        CONV["💬 ConversationAgent<br/>Skills: parse_intent<br/>generate_response"]
+        SENT["😊 SentimentAgent<br/>Skills: analyze_sentiment<br/>get_mood_history"]
+        SPOT["🎵 SpotifyAgent<br/>Skills: play_music, pause_music<br/>skip_next, play_by_mood<br/>+ ensureDeviceActive"]
+    end
+
+    subgraph OPENAI["🧠 OpenAI APIs"]
+        direction TB
+        WHISPER["Whisper API<br/>whisper-1"]
+        GPT["GPT-4o<br/>Function Calling<br/>Intent Classification"]
+        GPTSENTIMENT["GPT-4o<br/>Sentiment Analysis<br/>Enhanced Mood Detection"]
+        TTSAPI["TTS-1-HD API<br/>Voice: nova"]
+    end
+
+    subgraph SPOTIFY["🎧 Spotify Web API"]
+        direction TB
+        SEARCH["Search Tracks"]
+        PLAY["Playback Control"]
+        QUEUE["Queue Management<br/>20-track buffer"]
+        DEVICES["Device Management<br/>Auto-select & Transfer"]
+    end
+
+    %% User Flow
+    MIC -->|"Audio Stream"| VAD
+    VAD -->|"Speech Detected"| WS
+    
+    %% Client-Server
+    WS <-->|"WebSocket"| BUS
+    SDK <-->|"Device ID"| SERVER
+    
+    %% A2A Protocol Integration
+    A2A <--> BUS
+    A2A <--> ORCH
+    CARDS -.->|"Register"| AGENTS
+    
+    %% Logging
+    BUS -->|"All Events"| LOG
+    A2A -->|"A2A Transactions"| LOG
+    
+    %% MessageBus to Agents
+    BUS --> ORCH
+    BUS <--> SPEECH
+    BUS <--> CONV
+    BUS <--> SENT
+    BUS <--> SPOT
+    
+    %% Speech Agent Flow
+    STT -->|"audio:received"| WHISPER
+    WHISPER -->|"transcription"| STT
+    STT -->|"speech:transcribed"| BUS
+    NOAUDIO -->|"Process on timeout"| STT
+    
+    %% Conversation Agent Flow
+    CONV -->|"Function Calling"| GPT
+    GPT -->|"Tool result"| CONV
+    
+    %% Sentiment Agent Flow
+    SENT -->|"mood analysis"| GPTSENTIMENT
+    GPTSENTIMENT -->|"sentiment + energy_level"| SENT
+    
+    %% Spotify Agent Flow
+    SPOT -->|"search/play/next"| SPOTIFY
+    SPOTIFY -->|"track info"| SPOT
+    SPOT -->|"ensureDeviceActive"| DEVICES
+    
+    %% TTS Flow
+    TTS -->|"text"| TTSAPI
+    TTSAPI -->|"HD audio"| TTS
+    TTS -->|"client:audio"| WS
+    WS -->|"Play Audio"| AUDIO
+    
+    %% Echo Suppression
+    ECHO -->|"client:echo_suppress"| WS
+
+    %% Styling
+    classDef userStyle fill:#e1f5fe,stroke:#01579b
+    classDef clientStyle fill:#f3e5f5,stroke:#4a148c
+    classDef serverStyle fill:#e8f5e9,stroke:#1b5e20
+    classDef agentStyle fill:#fff3e0,stroke:#e65100
+    classDef openaiStyle fill:#fce4ec,stroke:#880e4f
+    classDef spotifyStyle fill:#e8f5e9,stroke:#1db954
+    classDef a2aStyle fill:#e3f2fd,stroke:#1565c0
