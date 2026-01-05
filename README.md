@@ -1540,7 +1540,7 @@ The `NO_AUDIO_TIMEOUT` handles edge cases where echo suppression pauses the micr
 
 ---
 
-READ the article about this project on MYAIPRD.COM (https://myaiprd.com/blog/spotify-a2a-buddy)
+READ the article about this project on [MYAIPRD.COM](https://myaiprd.com/blog/spotify-a2a-buddy)
 
 ---
 
